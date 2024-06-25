@@ -1,2 +1,2 @@
 # QT
-Qt Programs from Basic
+## Learning Qt Programs from Basic 
