@@ -21,7 +21,7 @@ This project demonstrates a basic login page implemented using Qt, with static u
 1. Clone or download the repository.
 2. Open the project in your preferred Qt development environment.
 3. Build and run the application to see the login page in action.
-4. Enter `admin` as the username and `password` as the password to experience a successful login.
+4. Enter `root` as the username and `root` as the password to experience a successful login.
 
 ## Notes
 
