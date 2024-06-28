@@ -42,7 +42,10 @@ This project demonstrates the integration of TCP socket communication between a 
 
 ### Contact Information
 
-[![Email](https://img.shields.io/badge/Email-your.email%40example.com-green)](mailto:sivasaiyarlagadda2001@gmail.com)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue)](https://www.linkedin.com/in/sivasai-yarlagadda)
+[![Email](https://img.shields.io/badge/Email-sivasaiyarlagadda2001@gmail.com-green?style=flat-square&logo=gmail)](mailto:sivasaiyarlagadda2001@gmail.com)
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Sivasai_Yarlagadda-blue?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/sivasai-yarlagadda)
+
+
 
 </div>
