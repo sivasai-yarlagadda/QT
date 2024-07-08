@@ -32,6 +32,28 @@ void MainWindow::on_actionNew_File_triggered()
     //Declaring the file path
     filepath="";
     ui->screen->setText(""); // Setting the screen with no data;
+    QString newfile = QInputDialog::getText(this, "Enter Filename", "Please enter the new filename along with Extension: ");
+    if (!newfile.isEmpty()) {
+        QMessageBox::information(this, "Filename", "You entered is : " + newfile);
+        QString filePath = QFileDialog::getSaveFileName(this, "Save File", newfile, "Text Files (*.txt);;All Files (*)");
+
+        QFile file(filePath);
+
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream out(&file);
+            //Taking input data using QInputDialouge
+            QString newfiledata = QInputDialog::getText(this,newfile,"Enter the data");
+            out << newfiledata;
+            file.close();
+            QMessageBox::information(this, "Success", "File saved successfully: " + filePath);
+        } else {
+            QMessageBox::warning(this, "Error", "Failed to open the file for writing.");
+        }
+
+
+    } else {
+        QMessageBox::information(this, "Filename", "No filename entered.");
+    }
 
 
     // TryingSomeThing New;
@@ -44,6 +66,8 @@ void MainWindow::on_actionNew_File_triggered()
     // tabCounter++;
 
 }
+
+
 
 
 // Open File
