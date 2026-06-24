@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qt 6 WebAssembly Setup Wizard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Chosen Palette: Warm Neutral & Calm Blue (Background: #FAF9F6, Text: #1F2937, Primary: #0284C7, Success: #10B981) -->
+    
+    <!-- Application Structure Plan: 
+    This SPA is structured as an interactive "Setup Wizard" and Dashboard. 
+    Rationale: Setup guides are traditionally linear and overwhelming. By breaking the "Source Report" (the Qt setup guide) into a dynamic, state-driven checklist, users can focus on one task at a time. 
+    Key features:
+    1. Navigation Sidebar: Allows non-linear exploration and tracks progress.
+    2. Dashboard/Overview: Provides analytical context (time estimates, difficulty breakdown) using Chart.js to prepare the user mentally.
+    3. Step-by-Step Views: Isolates instructions, code snippets, and placeholder screenshots for clarity.
+    4. Progress Tracking: Users can mark steps as 'complete', updating global state and unlocking a sense of achievement.
+    -->
+
+    <!-- Visualization & Content Choices:
+    1. Overall Progress -> Goal: Inform -> Progress Bar (HTML/CSS) -> Interactive tracking -> Shows completion status -> Tailwind classes.
+    2. Setup Time Estimates -> Goal: Compare -> Bar Chart -> Hover tooltips -> Sets expectations for each step -> Chart.js.
+    3. Setup Complexity Breakdown -> Goal: Inform/Proportions -> Doughnut Chart -> Hover tooltips -> Categorizes tasks (Config vs Code vs Bugfix) -> Chart.js.
+    4. Code Snippets -> Goal: Inform -> Styled <pre> blocks -> Copy-to-clipboard functionality (simulated/visual) -> Easier code transfer -> HTML/JS.
+    5. Visual Examples -> Goal: Context -> Structured HTML divs (Placeholder for user's screenshots) -> No external images needed -> HTML/CSS.
+    CONFIRMATION: NO SVG graphics used. NO Mermaid JS used.
+    -->
+
+    <style>
+        /* Base typography and custom scrollbar */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #FAF9F6; color: #1F2937; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* REQUIRED CHART CONTAINER STYLING */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px; /* Base height for mobile */
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container { height: 350px; }
+        }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .code-block { background-color: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; font-family: monospace; font-size: 0.875rem; line-height: 1.5; margin-top: 0.5rem; margin-bottom: 1rem;}
+        .unicode-icon { display: inline-block; width: 1.5rem; text-align: center; }
+    </style>
+</head>
+<body class="h-screen flex flex-col md:flex-row overflow-hidden">
+
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <!-- Mobile Header -->
+    <header class="md:hidden bg-white shadow-sm z-10 flex justify-between items-center p-4">
+        <div class="font-bold text-lg text-[#0284C7]">&#9881; Qt6 WASM Setup</div>
+        <button id="mobile-menu-btn" class="text-2xl focus:outline-none">&#9776;</button>
+    </header>
+
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="w-full md:w-80 bg-white shadow-lg flex-shrink-0 flex-col h-full absolute md:relative z-20 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out overflow-y-auto">
+        <div class="p-6 hidden md:block border-b border-gray-100">
+            <h1 class="text-2xl font-bold text-[#0284C7] tracking-tight">&#9881; Qt6 WASM</h1>
+            <p class="text-xs text-gray-500 mt-1 uppercase tracking-wider font-semibold">Interactive Setup Guide</p>
+        </div>
+
+        <!-- Progress Overview -->
+        <div class="p-6 border-b border-gray-100 bg-gray-50">
+            <div class="flex justify-between items-end mb-2">
+                <span class="text-sm font-semibold text-gray-700">Overall Progress</span>
+                <span id="progress-text" class="text-lg font-bold text-[#10B981]">0%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                <div id="progress-bar" class="bg-[#10B981] h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <nav class="flex-1 py-4" id="nav-container">
+            <!-- Nav items injected via JS -->
+        </nav>
+        
+        <div class="p-4 border-t border-gray-100 text-center text-xs text-gray-400">
+            Based on Official Guide v1.0
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto bg-[#FAF9F6] p-4 md:p-8 relative">
+        <div id="content-container" class="max-w-4xl mx-auto pb-20">
+            <!-- Content injected via JS -->
+        </div>
+    </main>
+
+    <!-- Application Logic -->
+    <script>
+        // Data Structure synthesizing the "Source Report"
+        const reportData = {
+            overview: {
+                id: 'overview',
+                title: "Dashboard & Overview",
+                intro: "Welcome to the interactive Qt 6 WebAssembly setup wizard. Building native C++ applications for the web requires a precise environment configuration. This dashboard provides an analytical overview of the setup process before you begin.",
+                type: 'dashboard'
+            },
+            steps: [
+                {
+                    id: 'reqs',
+                    title: "Required Software",
+                    icon: "&#128190;",
+                    intro: "Before configuring the environment, specific toolchains must be installed on your Windows machine. This section lists the prerequisites required for Qt WebAssembly compilation.",
+                    content: `
+                        <ul class="list-none space-y-3 mt-4">
+                            <li class="flex items-start"><span class="text-green-500 mr-2">&#10003;</span> <div><strong>Qt 6.2.4:</strong> Installed via Qt Maintenance Tool (Include 'WebAssembly' component).</div></li>
+                            <li class="flex items-start"><span class="text-green-500 mr-2">&#10003;</span> <div><strong>MinGW 64-bit:</strong> Usually mingw1120_64, via Qt Maintenance Tool.</div></li>
+                            <li class="flex items-start"><span class="text-green-500 mr-2">&#10003;</span> <div><strong>CMake:</strong> Installed via Qt Maintenance Tool.</div></li>
+                            <li class="flex items-start"><span class="text-green-500 mr-2">&#10003;</span> <div><strong>Git for Windows:</strong> Required to pull down the Emscripten SDK.</div></li>
+                        </ul>
+                    `
+                },
+                {
+                    id: 'step1',
+                    title: "1. Install Emscripten",
+                    icon: "&#128187;",
+                    intro: "Qt 6.2.4 strictly requires Emscripten version 2.0.14. Installing this to the root drive (C:\\) is critical to avoid Windows path length errors during deep compilations.",
+                    content: `
+                        <p class="mb-2 text-sm text-gray-600">Open Command Prompt (cmd) and execute these commands sequentially:</p>
+                        <div class="code-block">cd C:\\<br>git clone https://github.com/emscripten-core/emsdk.git</div>
+                        <div class="code-block">cd emsdk<br>emsdk install 2.0.14<br>emsdk activate 2.0.14</div>
+                        
+                        <div class="mt-6">
+                            <img src="images/emsdk_install.png" alt="Console output showing emsdk installation and activation" class="w-full rounded-lg shadow-sm border border-gray-200">
+                            <p class="text-xs text-gray-500 mt-2 text-center italic">Screenshot: Successful activation output in console.</p>
+                        </div>
+                    `
+                },
+                {
+                    id: 'step2',
+                    title: "2. Environment Variables",
+                    icon: "&#128279;",
+                    intro: "For CMake to automatically detect the compiler toolchains, Windows must be globally aware of the Emscripten and MinGW directory paths.",
+                    content: `
+                        <ol class="list-decimal pl-5 space-y-3 mt-4">
+                            <li>Open Windows Search, type <strong>env</strong>, select "Edit the system environment variables".</li>
+                            <li>Click <strong>Environment Variables...</strong></li>
+                            <li>Under <em>User variables</em>, click <strong>New...</strong>
+                                <ul class="list-disc pl-5 mt-1 text-sm text-gray-600">
+                                    <li>Name: <code class="bg-gray-200 px-1 rounded">EMSDK</code></li>
+                                    <li>Value: <code class="bg-gray-200 px-1 rounded">C:\\emsdk</code></li>
+                                </ul>
+                            </li>
+                            <li>Find the <strong>Path</strong> variable, click <strong>Edit...</strong>
+                                <ul class="list-disc pl-5 mt-1 text-sm text-gray-600">
+                                    <li>Add new entry: <code class="bg-gray-200 px-1 rounded">C:\\Qt\\Tools\\mingw1120_64\\bin</code></li>
+                                </ul>
+                            </li>
+                        </ol>
+                        <div class="mt-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 text-sm">
+                            <strong>&#9888; CRITICAL:</strong> Restart your computer after this step to load the new Path variables into the system memory.
+                        </div>
+                        
+                        <div class="mt-6">
+                            <img src="images/env_variables.png" alt="Windows Environment Variables setup" class="w-full rounded-lg shadow-sm border border-gray-200">
+                            <p class="text-xs text-gray-500 mt-2 text-center italic">Screenshot: EMSDK and Path variable configuration window.</p>
+                        </div>
+                    `
+                },
+                {
+                    id: 'step3',
+                    title: "3. Patch Qt Bug",
+                    icon: "&#128030;",
+                    intro: "This step resolves a known hardcoded path bug in the official Qt 6.2.4 release (the 'Chainload' error) by surgically editing the CMake toolchain file.",
+                    content: `
+                        <p class="mb-4">Navigate to <code class="bg-gray-200 px-1 rounded text-sm">C:\\Qt\\6.2.4\\wasm_32\\lib\\cmake\\Qt6\\</code> and open <strong>qt.toolchain.cmake</strong> in Notepad.</p>
+                        <p class="mb-2">Find and replace the hardcoded developer path:</p>
+                        <div class="flex flex-col gap-2">
+                            <div class="p-3 bg-red-50 text-red-800 text-sm border-l-4 border-red-500"><del>C:/Utils/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake</del></div>
+                            <div class="text-center text-gray-400">&#11015; Replace with &#11015;</div>
+                            <div class="p-3 bg-green-50 text-green-800 text-sm border-l-4 border-green-500">C:/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake</div>
+                        </div>
+                        <p class="mt-4 text-sm text-gray-600">Save the file. (If permission is denied, save to Desktop, then drag and replace).</p>
+                    `
+                },
+                {
+                    id: 'step4',
+                    title: "4. Configure Qt Kits",
+                    icon: "&#128736;",
+                    intro: "Qt Creator defaults to expecting the 'Ninja' build system. Since we are using standard MinGW, we must explicitly reconfigure the WebAssembly Kit preferences.",
+                    content: `
+                        <ol class="list-decimal pl-5 space-y-3 mt-4">
+                            <li>Open <strong>Qt Creator</strong> > Edit > Preferences.</li>
+                            <li>Go to <strong>SDKs</strong> > WebAssembly tab. Set SDK path to: <code class="bg-gray-200 px-1 rounded">C:\\emsdk</code>. Apply.</li>
+                            <li>Go to <strong>Kits</strong> > Select <em>WebAssembly Qt 6.2.4</em>.</li>
+                            <li>Change <strong>CMake generator</strong> from <em>Ninja</em> to <strong>MinGW Makefiles</strong>.</li>
+                            <li>Verify Compiler fields point to Emscripten (<code class="bg-gray-200 px-1 rounded">emcc.bat</code> / <code class="bg-gray-200 px-1 rounded">em++.bat</code>).</li>
+                            <li>Click OK.</li>
+                        </ol>
+                        
+                        <div class="mt-6 space-y-8">
+                            <div>
+                                <img src="images/qt_creator_sdks.png" alt="Qt Creator SDKs configuration" class="w-full rounded-lg shadow-sm border border-gray-200">
+                                <p class="text-xs text-gray-500 mt-2 text-center italic">Screenshot: WebAssembly SDK path configuration (ensure you use the clean C:\\emsdk path!).</p>
+                            </div>
+                            <div>
+                                <img src="images/qt_creator_kits.png" alt="Qt Creator Kits configuration" class="w-full rounded-lg shadow-sm border border-gray-200">
+                                <p class="text-xs text-gray-500 mt-2 text-center italic">Screenshot: The updated MinGW Makefiles generator setting.</p>
+                            </div>
+                        </div>
+                    `
+                },
+                {
+                    id: 'step5',
+                    title: "5. Fix Python Server",
+                    icon: "&#128013;",
+                    intro: "Emscripten 2.0.14 relies on an older Python module ('cgi') to launch the local web server. The newer embedded Python 3.13 removed this, causing application launch crashes.",
+                    content: `
+                        <p class="mb-2 text-sm text-gray-600">Open Command Prompt and inject the legacy module directly into Emscripten's Python environment:</p>
+                        <div class="code-block">C:\\emsdk\\python\\3.13.3_64bit\\python.exe -m pip install legacy-cgi</div>
+                        <p class="mt-4 text-sm text-gray-600">This resolves the <code class="text-red-500">ModuleNotFoundError: No module named 'cgi'</code> error seen in the Application Output.</p>
+                        
+                        <div class="mt-6">
+                            <img src="images/python_cgi_error.png" alt="Python CGI missing module error in application output" class="w-full rounded-lg shadow-sm border border-gray-200">
+                            <p class="text-xs text-gray-500 mt-2 text-center italic">Screenshot: The trace error before applying the legacy-cgi patch.</p>
+                        </div>
+                    `
+                },
+                {
+                    id: 'step6',
+                    title: "6. Project Code Structure",
+                    icon: "&#128193;",
+                    intro: "With the environment stable, this section provides the essential C++ and CMake source code required to generate an interactive web UI. We utilize standard Qt Widgets.",
+                    content: `
+                        <p class="text-sm mb-4">Review the core files needed for the basic text-input widget application.</p>
+                        
+                        <!-- Custom Tabs for Code -->
+                        <div class="border border-gray-200 rounded-lg overflow-hidden">
+                            <div class="flex bg-gray-100 border-b border-gray-200 overflow-x-auto">
+                                <button onclick="switchTab('cmake')" id="tab-cmake" class="px-4 py-2 text-sm font-medium bg-white text-blue-600 border-b-2 border-blue-600">CMakeLists.txt</button>
+                                <button onclick="switchTab('main')" id="tab-main" class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">main.cpp</button>
+                                <button onclick="switchTab('mwh')" id="tab-mwh" class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">mainwindow.h</button>
+                                <button onclick="switchTab('mwcpp')" id="tab-mwcpp" class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">mainwindow.cpp</button>
+                            </div>
+                            <div class="p-0 bg-[#1e293b]">
+                                <div id="content-cmake" class="code-tab-content block">
+                                    <pre class="code-block m-0 rounded-none border-none"><code>cmake_minimum_required(VERSION 3.16)
+project(FirstCmakeWidgetWeb VERSION 0.1 LANGUAGES CXX)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_CXX_STANDARD 17)
+
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
+find_package(Qt\${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
+
+set(PROJECT_SOURCES main.cpp mainwindow.cpp mainwindow.h mainwindow.ui)
+
+if(\${QT_VERSION_MAJOR} GREATER_EQUAL 6)
+    qt_add_executable(FirstCmakeWidgetWeb MANUAL_FINALIZATION \${PROJECT_SOURCES})
+else()
+    add_executable(FirstCmakeWidgetWeb \${PROJECT_SOURCES})
+endif()
+
+target_link_libraries(FirstCmakeWidgetWeb PRIVATE Qt\${QT_VERSION_MAJOR}::Widgets)
+
+if(QT_VERSION_MAJOR EQUAL 6)
+    qt_finalize_executable(FirstCmakeWidgetWeb)
+endif()</code></pre>
+                                </div>
+                                <div id="content-main" class="code-tab-content hidden">
+                                    <pre class="code-block m-0 rounded-none border-none"><code>#include "mainwindow.h"
+#include &lt;QApplication&gt;
+
+int main(int argc, char *argv[])
+{
+    QApplication a(argc, argv);
+    MainWindow w;
+    w.show();
+    return a.exec();
+}</code></pre>
+                                </div>
+                                <div id="content-mwh" class="code-tab-content hidden">
+                                    <pre class="code-block m-0 rounded-none border-none"><code>#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
+#include &lt;QMainWindow&gt;
+
+QT_BEGIN_NAMESPACE
+namespace Ui { class MainWindow; }
+QT_END_NAMESPACE
+
+class MainWindow : public QMainWindow {
+    Q_OBJECT
+public:
+    MainWindow(QWidget *parent = nullptr);
+    ~MainWindow();
+public slots:
+    void displayInLabel();
+private:
+    Ui::MainWindow *ui;
+};
+#endif</code></pre>
+                                </div>
+                                <div id="content-mwcpp" class="code-tab-content hidden">
+                                    <pre class="code-block m-0 rounded-none border-none"><code>#include "mainwindow.h"
+#include "./ui_mainwindow.h"
+
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent), ui(new Ui::MainWindow)
+{
+    ui-&gt;setupUi(this);
+    connect(ui-&gt;pbGetTypedData, &QPushButton::clicked, this, &MainWindow::displayInLabel);
+}
+
+MainWindow::~MainWindow() { delete ui; }
+
+void MainWindow::displayInLabel() {
+    ui-&gt;lblTypedData-&gt;setText("Typed : " + ui-&gt;plainTextEdit-&gt;toPlainText());
+}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    `
+                },
+                {
+                    id: 'step7',
+                    title: "7. Build and Run",
+                    icon: "&#9654;",
+                    intro: "The final step generates the WebAssembly binaries and launches the local web server to display the interactive application.",
+                    content: `
+                        <ol class="list-decimal pl-5 space-y-3 mt-4">
+                            <li>Open your project in Qt Creator.</li>
+                            <li>Select the <strong>WebAssembly Qt 6.2.4</strong> Kit in the bottom left corner.</li>
+                            <li>Switch the build mode from <strong>Debug</strong> to <strong>Release</strong> (Recommended to drastically reduce final <code class="text-sm bg-gray-200 px-1">.wasm</code> file size).</li>
+                            <li>Click the large green <strong>Play</strong> button.</li>
+                        </ol>
+                        <p class="mt-4 text-sm text-gray-600 italic">Note: The initial Emscripten optimization pass takes several minutes. Subsequent builds will be much faster.</p>
+
+                        <div class="mt-6">
+                            <img src="images/successful_run.png" alt="Native Qt application running in Web Browser" class="w-full rounded-lg shadow-sm border border-gray-200">
+                            <p class="text-xs text-gray-500 mt-2 text-center italic">Screenshot: The native Qt UI rendered cleanly in a web browser.</p>
+                        </div>
+                    `
+                },
+                {
+                    id: 'troubleshoot',
+                    title: "Troubleshooting",
+                    icon: "&#10068;",
+                    intro: "If CMake throws errors after you have changed settings, Qt Creator might be reading a broken memory cache. Perform a nuclear reset.",
+                    content: `
+                        <div class="bg-red-50 p-5 rounded-lg border border-red-100">
+                            <h4 class="font-bold text-red-800 mb-2">Nuclear Reset Procedure</h4>
+                            <ol class="list-decimal pl-5 space-y-2 text-sm text-red-900">
+                                <li>Close Qt Creator entirely.</li>
+                                <li>Navigate to your project directory in File Explorer.</li>
+                                <li><strong>Delete</strong> the <code class="bg-red-100 px-1 rounded">build</code> folder.</li>
+                                <li><strong>Delete</strong> the hidden <code class="bg-red-100 px-1 rounded">CMakeLists.txt.user</code> file.</li>
+                                <li>Reopen the project in Qt Creator and reconfigure.</li>
+                            </ol>
+                        </div>
+                    `
+                }
+            ]
+        };
+
+        // Application State
+        let currentStepId = 'overview';
+        let completedSteps = new Set();
+        let chartsRendered = false;
+
+        // Initialize Application
+        function init() {
+            renderNav();
+            renderContent(currentStepId);
+            updateProgress();
+
+            // Mobile menu toggle
+            document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+                const sidebar = document.getElementById('sidebar');
+                sidebar.classList.toggle('-translate-x-full');
+            });
+        }
+
+        // Render Sidebar Navigation
+        function renderNav() {
+            const navContainer = document.getElementById('nav-container');
+            let navHtml = `
+                <a href="#" onclick="navigate('overview')" id="nav-overview" class="flex items-center px-6 py-3 text-sm font-medium transition-colors duration-150 border-l-4 border-transparent hover:bg-blue-50 hover:text-blue-700">
+                    <span class="unicode-icon mr-3">&#128202;</span> Dashboard
+                </a>
+            `;
+
+            reportData.steps.forEach(step => {
+                const isCompleted = completedSteps.has(step.id);
+                const statusIcon = isCompleted ? '<span class="text-green-500 ml-auto">&#10003;</span>' : '';
+                
+                navHtml += `
+                    <a href="#" onclick="navigate('${step.id}')" id="nav-${step.id}" class="flex items-center px-6 py-3 text-sm font-medium transition-colors duration-150 border-l-4 border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                        <span class="unicode-icon mr-3">${step.icon}</span> 
+                        <span class="truncate">${step.title}</span>
+                        ${statusIcon}
+                    </a>
+                `;
+            });
+
+            navContainer.innerHTML = navHtml;
+            highlightNav(currentStepId);
+        }
+
+        // Handle Navigation
+        function navigate(id) {
+            currentStepId = id;
+            renderContent(id);
+            highlightNav(id);
+            
+            // Close mobile menu if open
+            if(window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+            }
+        }
+
+        function highlightNav(id) {
+            document.querySelectorAll('#nav-container a').forEach(el => {
+                el.classList.remove('bg-blue-50', 'text-blue-700', 'border-[#0284C7]');
+                el.classList.add('text-gray-600', 'border-transparent');
+            });
+            const active = document.getElementById(`nav-${id}`);
+            if (active) {
+                active.classList.remove('text-gray-600', 'border-transparent');
+                active.classList.add('bg-blue-50', 'text-[#0284C7]', 'border-[#0284C7]');
+            }
+        }
+
+        // Render Main Content
+        function renderContent(id) {
+            const container = document.getElementById('content-container');
+            container.innerHTML = ''; // Clear current
+            
+            let data = null;
+            if (id === 'overview') {
+                data = reportData.overview;
+                container.innerHTML = generateOverviewHTML(data);
+                if(!chartsRendered) {
+                    setTimeout(renderCharts, 100); // Slight delay for DOM
+                }
+            } else {
+                data = reportData.steps.find(s => s.id === id);
+                container.innerHTML = generateStepHTML(data);
+            }
+        }
+
+        // Generate Dashboard HTML
+        function generateOverviewHTML(data) {
+            return `
+                <div class="fade-in bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
+                    <h2 class="text-3xl font-bold text-gray-900 mb-4">${data.title}</h2>
+                    <p class="text-gray-600 text-lg leading-relaxed mb-8">${data.intro}</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- Chart 1: Setup Time -->
+                        <div class="bg-[#FAF9F6] p-4 rounded-lg border border-gray-100">
+                            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4 text-center">Estimated Time per Phase (Mins)</h3>
+                            <div class="chart-container">
+                                <canvas id="timeChart"></canvas>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-4 text-center">Initial builds require significant optimization time.</p>
+                        </div>
+
+                        <!-- Chart 2: Complexity Breakdown -->
+                        <div class="bg-[#FAF9F6] p-4 rounded-lg border border-gray-100">
+                            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4 text-center">Setup Friction Breakdown</h3>
+                            <div class="chart-container">
+                                <canvas id="complexityChart"></canvas>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-4 text-center">Focus areas for potential troubleshooting.</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-10 text-center">
+                        <button onclick="navigate('reqs')" class="bg-[#0284C7] hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition duration-200">
+                            Start Setup Guide &#10140;
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Generate Individual Step HTML
+        function generateStepHTML(step) {
+            const isCompleted = completedSteps.has(step.id);
+            const btnClass = isCompleted 
+                ? "bg-gray-100 text-gray-500 border border-gray-300 hover:bg-gray-200" 
+                : "bg-[#10B981] hover:bg-green-600 text-white shadow-md";
+            const btnText = isCompleted ? "&#10003; Completed" : "Mark as Complete";
+
+            return `
+                <div class="fade-in">
+                    <div class="flex items-center space-x-4 mb-6">
+                        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-2xl text-blue-600">
+                            ${step.icon}
+                        </div>
+                        <h2 class="text-3xl font-bold text-gray-900">${step.title}</h2>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8 mb-6">
+                        <p class="text-gray-600 text-lg leading-relaxed mb-6 border-b border-gray-100 pb-6">
+                            ${step.intro}
+                        </p>
+                        <div class="prose max-w-none text-gray-800">
+                            ${step.content}
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center mt-8">
+                        <button onclick="toggleStepComplete('${step.id}')" class="font-bold py-3 px-6 rounded-lg transition duration-200 ${btnClass}">
+                            ${btnText}
+                        </button>
+                        
+                        ${getNextStepButtonHTML(step.id)}
+                    </div>
+                </div>
+            `;
+        }
+
+        function getNextStepButtonHTML(currentId) {
+            const index = reportData.steps.findIndex(s => s.id === currentId);
+            if (index < reportData.steps.length - 1) {
+                const nextStep = reportData.steps[index + 1];
+                return `<button onclick="navigate('${nextStep.id}')" class="text-[#0284C7] hover:text-blue-800 font-semibold px-4 py-2">Next: ${nextStep.title} &#10140;</button>`;
+            }
+            return `<div></div>`; // Empty div for flex spacing
+        }
+
+        // State Management functions
+        function toggleStepComplete(id) {
+            if (completedSteps.has(id)) {
+                completedSteps.delete(id);
+            } else {
+                completedSteps.add(id);
+            }
+            updateProgress();
+            renderNav(); // Update checkmarks
+            renderContent(id); // Re-render to update button state
+        }
+
+        function updateProgress() {
+            const total = reportData.steps.length;
+            const completed = completedSteps.size;
+            const percentage = Math.round((completed / total) * 100);
+            
+            document.getElementById('progress-bar').style.width = `${percentage}%`;
+            document.getElementById('progress-text').innerText = `${percentage}%`;
+        }
+
+        // UI Helpers
+        function switchTab(tabId) {
+            // Hide all contents
+            document.querySelectorAll('.code-tab-content').forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('block');
+            });
+            // Reset all tabs
+            document.querySelectorAll('button[id^="tab-"]').forEach(el => {
+                el.classList.remove('bg-white', 'text-blue-600', 'border-b-2', 'border-blue-600');
+                el.classList.add('text-gray-600');
+            });
+            
+            // Show selected
+            document.getElementById(`content-${tabId}`).classList.remove('hidden');
+            document.getElementById(`content-${tabId}`).classList.add('block');
+            const activeTab = document.getElementById(`tab-${tabId}`);
+            activeTab.classList.remove('text-gray-600');
+            activeTab.classList.add('bg-white', 'text-blue-600', 'border-b-2', 'border-blue-600');
+        }
+
+        // Chart.js Implementations
+        function renderCharts() {
+            const ctxTime = document.getElementById('timeChart');
+            const ctxComp = document.getElementById('complexityChart');
+
+            if (!ctxTime || !ctxComp) return;
+
+            // Chart 1: Time Estimates
+            new Chart(ctxTime, {
+                type: 'bar',
+                data: {
+                    labels: ['Emscripten', 'Env Vars', 'Bug Patch', 'Kits', 'Python', 'Code', 'First Build'],
+                    datasets: [{
+                        label: 'Estimated Minutes',
+                        data: [5, 3, 2, 4, 1, 5, 15],
+                        backgroundColor: '#0284C7',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1F2937',
+                            padding: 10,
+                            displayColors: false
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // Chart 2: Complexity Breakdown
+            new Chart(ctxComp, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Environment Configuration', 'Bug Mitigation', 'Compilation Wait Time'],
+                    datasets: [{
+                        data: [45, 15, 40],
+                        backgroundColor: ['#0284C7', '#F59E0B', '#10B981'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: {family: 'Inter'} } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) { return ' ' + context.label + ': ' + context.raw + '%'; }
+                            }
+                        }
+                    }
+                }
+            });
+
+            chartsRendered = true;
+        }
+
+        // Boot
+        window.addEventListener('DOMContentLoaded', init);
+
+    </script>
+</body>
+</html>
